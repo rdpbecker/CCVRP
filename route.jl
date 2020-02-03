@@ -96,21 +96,33 @@ function solve_tsp(; verbose = true)
     )
 
     ## Scenario variables
+    # Index of the vertex on the TSP route
     @variable(model, o[1:num_verts] >= 0)
 
+    # One if the vertex is served after refill in this scenario, 
+    # zero else
     @variable(model, w[1:num_scens,1:num_verts] >= 0)
 
+    # The number of customers not served in this scenario
     @variable(model, nns[1:num_scens] >= 0)
 
+    # Positive correction for determining if we need to refill at
+    # this vertex in this scenario
     @variable(model, pplus[1:num_scens,1:num_verts] >= 0)
 
+    # Negative correction for determining if we need to refill at
+    # this vertex in this scenario
     @variable(model, pminus[1:num_scens,1:num_verts] >= 0)
 
+    # One if there is positive correction, zero else
     @variable(model, sign[1:num_scens,1:num_verts], Bin)
 
+    # One if we need to refill here, zero else
     @variable(model, pay[1:num_scens,1:num_verts], Bin)
 
     ## Scenario constraints
+    # In these two constraints, we determine whether the customer
+    # at a given vertex is served before or after the refill
     @constraint(model,
         serve[k in 2:num_verts, s in 1:num_scens],
         sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i) for i
@@ -123,12 +135,15 @@ function solve_tsp(; verbose = true)
         in 1:num_verts) - w[s,k]*cap >= 0 
     )
 
+    # Determine the index of the given vertex in the TSP route
     @constraint(model,
         ordrout[k in 2:num_verts],
         sum(sumNotEq([1 for j in 2:num_verts],x[i,2:num_verts,k],i) for i
         in 1:num_verts) - o[k]*cap >= 0 
     )
 
+    # Make sure that the index reached first is served first (next
+    # four)
     @constraint(model, 
         precik[i in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
         w[s,i] - w[s,k] <= 1-sum(x[i,2:num_verts,k])
@@ -149,18 +164,23 @@ function solve_tsp(; verbose = true)
         w[s,k] - w[s,j] <= sum(x[2:num_verts,j,k])
     )
 
+    # Make sure that the total demand of customers served in the
+    # first pass is less than the capacity 
     @constraint(model, twostage[s in 1:num_scens],
         sum(demands[s,k]*w[s,k] for k in 1:num_verts) <= cap
     )
 
+    # Set the number of customers not served
     @constraint(model, notserv[s in 1:num_scens],
         sum(w[s,k] for k in 2:num_verts) - nns[s] == 0
     )
 
+    # Set the positive and negative correction
     @constraint(model, lastserv[k in 2:num_verts, s in 1:num_scens],
         o[k] + nns[s] + pplus[s,k] - pminus[s,k] == num_verts
     )
 
+    # Set the sign variable for this vertex and scenario
     @constraint(model, possign[k in 2:num_verts, s in 1:num_scens],
         pplus[s,k] - num_verts*sign[s,k] <= 0
     )
@@ -169,6 +189,8 @@ function solve_tsp(; verbose = true)
         pminus[s,k] + num_verts*sign[s,k] <= num_verts
     )
 
+    # Determine if we need to refill at this vertex in this
+    # scenario
     @constraint(model, setpay[k in 2:num_verts, s in 1:num_scens],
         pay[s,k] + pplus[s,k] + pminus[s,k] >= 1
     )
