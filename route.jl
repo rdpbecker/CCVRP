@@ -96,7 +96,7 @@ function solve_tsp(; verbose = true)
     )
 
     ## Scenario variables
-    @variable(model, o[2:num_verts] >= 0)
+    @variable(model, o[1:num_verts] >= 0)
 
     @variable(model, w[1:num_scens,1:num_verts] >= 0)
 
@@ -181,10 +181,30 @@ function solve_tsp(; verbose = true)
 
     if verbose
         println("RESULTS:")
+        println("Path variables:")
         for i in 1:num_verts
             for j in 1:num_verts
                 println("Vertex $(i) to vertex $(j) = $(JuMP.value(y[i,j]))")
+                println("Visited number $(JuMP.value(o[i]))")
+                for k in 1:num_verts
+                    println("On path to $(k): $(JuMP.value(x[i,j,k]))")
+                end
+                println("")
             end
+        end
+        println("Scenario variables:")
+        for s in 1:num_scens
+            println("Scenario $(demands[s,:])")
+            println("Not served: $(JuMP.value(nns[s]))")
+            for i in 2:num_verts
+                println("Vertex $(i)")
+                println("Served in second pass: $(JuMP.value(w[s,i]))")
+                println("Adjustors (+/-): $(JuMP.value(pplus[s,i])), $(JuMP.value(pminus[s,i]))")
+                println("Sign: $(JuMP.value(sign[s,i]))")
+                println("Goes back to depot: $(JuMP.value(pay[s,i]))")
+                println("")
+            end
+            println("")
         end
     end
 
