@@ -195,8 +195,9 @@ function solve_tsp(; verbose = true)
         pay[s,k] + pplus[s,k] + pminus[s,k] >= 1
     )
 
-    @objective(model, Min, sum(distance[i,j]*y[i,j] 
-        for i in 1:num_verts, j in 1:num_verts)
+    @objective(model, Min, 
+        sum(distance[i,j]*y[i,j] for i in 1:num_verts, j in 1:num_verts) +
+        (1/num_scens)*sum(2*pay[s,k]*distance[k,1] for s in 1:num_scens, k in 1:num_verts)
     )
 
     JuMP.optimize!(model)
