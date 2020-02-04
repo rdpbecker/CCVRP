@@ -125,21 +125,21 @@ function solve_tsp(; verbose = true)
     # at a given vertex is served before or after the refill
     @constraint(model,
         serve[k in 2:num_verts, s in 1:num_scens],
-        sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i) for i
+        sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i-1) for i
         in 1:num_verts) - w[s,k]*cap <= cap
     )
 
     @constraint(model,
         servecomp[k in 2:num_verts, s in 1:num_scens],
-        sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i) for i
+        sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i-1) for i
         in 1:num_verts) - w[s,k]*cap >= 0 
     )
 
     # Determine the index of the given vertex in the TSP route
     @constraint(model,
         ordrout[k in 2:num_verts],
-        sum(sumNotEq([1 for j in 2:num_verts],x[i,2:num_verts,k],i) for i
-        in 1:num_verts) - o[k]*cap >= 0 
+        sum(sumNotEq([1 for j in 2:num_verts],x[i,2:num_verts,k],i-1) for i
+        in 1:num_verts) - o[k] == 0 
     )
 
     # Make sure that the index reached first is served first (next
@@ -159,15 +159,15 @@ function solve_tsp(; verbose = true)
         w[s,k] - w[s,i] <= sum(x[i,2:num_verts,k])
     )
 
-    @constraint(model, 
-        preckj[j in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
-        w[s,k] - w[s,j] <= sum(x[2:num_verts,j,k])
-    )
+#    @constraint(model, 
+#        preckj[j in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
+#        w[s,k] - w[s,j] <= sum(x[2:num_verts,j,k])
+#    )
 
     # Make sure that the total demand of customers served in the
     # first pass is less than the capacity 
     @constraint(model, twostage[s in 1:num_scens],
-        sum(demands[s,k]*w[s,k] for k in 1:num_verts) <= cap
+        sum(demands[s,k]*w[s,k] for k in 2:num_verts) <= cap
     )
 
     # Set the number of customers not served
@@ -205,9 +205,9 @@ function solve_tsp(; verbose = true)
         println("RESULTS:")
         println("Path variables:")
         for i in 1:num_verts
+            println("Visited number $(JuMP.value(o[i]))")
             for j in 1:num_verts
                 println("Vertex $(i) to vertex $(j) = $(JuMP.value(y[i,j]))")
-                println("Visited number $(JuMP.value(o[i]))")
                 for k in 1:num_verts
                     println("On path to $(k): $(JuMP.value(x[i,j,k]))")
                 end
