@@ -101,7 +101,7 @@ function solve_tsp(; verbose = true)
 
     # One if the vertex is served after refill in this scenario, 
     # zero else
-    @variable(model, w[1:num_scens,1:num_verts] >= 0)
+    @variable(model, w[1:num_scens,1:num_verts], Bin)
 
     # The number of customers not served in this scenario
     @variable(model, nns[1:num_scens] >= 0)
@@ -165,7 +165,7 @@ function solve_tsp(; verbose = true)
 #    )
 
     # Make sure that the total demand of customers served in the
-    # first pass is less than the capacity 
+    # first pass is less than the capacity
     @constraint(model, twostage[s in 1:num_scens],
         sum(demands[s,k]*w[s,k] for k in 2:num_verts) <= cap
     )
@@ -201,6 +201,10 @@ function solve_tsp(; verbose = true)
     )
 
     JuMP.optimize!(model)
+
+    if termination_status(model) == MOI.INFEASIBLE_OR_UNBOUNDED
+        return
+    end
 
     if verbose
         println("RESULTS:")
