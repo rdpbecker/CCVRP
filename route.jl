@@ -164,12 +164,6 @@ function solve_tsp(; verbose = true)
 #        w[s,k] - w[s,j] <= sum(x[2:num_verts,j,k])
 #    )
 
-    # Make sure that the total demand of customers served in the
-    # first pass is less than the capacity
-    @constraint(model, twostage[s in 1:num_scens],
-        sum(demands[s,k]*w[s,k] for k in 2:num_verts) <= cap
-    )
-
     # Set the number of customers not served
     @constraint(model, notserv[s in 1:num_scens],
         sum(w[s,k] for k in 2:num_verts) - nns[s] == 0
