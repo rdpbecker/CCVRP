@@ -1,4 +1,4 @@
-using JuMP, Gurobi 
+using JuMP, Gurobi, JSON 
 
 function numOnPath(i,k)
     if k == 1
@@ -43,18 +43,19 @@ function allSubs(inputList,outputList=[],setList=[],index=1)
 end
 
 function solve_tsp(; verbose = true)
-
+    
+    graph_num = "1"
     m = 2
 
     # Define the vertex names
     verts = ["A","B","C","D","E"]
 
     # Distance between the pairs of vertices
-    distance = [1000000 1 1000 1000 1;
-        1 1000000 9 9 9;
-        1000 9 1000000 1 9;
-        1000 9 1 1000000 9;
-        1 9 9 9 1000000]
+
+    distance = open(string("Graphs/graph",graph_num,".json")) do f
+        txt = read(f,String)
+        JSON.parse(txt)
+    end
 
     num_verts = length(verts)
 
