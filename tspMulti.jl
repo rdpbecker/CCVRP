@@ -45,7 +45,8 @@ end
 function solve_tsp(; verbose = true)
     
     graph_num = "1"
-    m = 2
+    num_vehicles = 2
+    capacity = 2
 
     # Define the vertex names
     verts = ["A","B","C","D","E"]
@@ -60,8 +61,8 @@ function solve_tsp(; verbose = true)
     num_verts = length(verts)
 
     powset = []
-    allSubs(1:num_verts,[],powset,1)
-    powset = [powset[i] for i in 2:2^num_verts-1]
+    allSubs(2:num_verts,[],powset,1)
+    powset = [powset[i] for i in 2:2^(num_verts-1)-1]
     cuts = []
     for elem in powset
         push!(cuts,cut(elem,1:num_verts))
@@ -77,17 +78,17 @@ function solve_tsp(; verbose = true)
 
     # in d
     @constraint(model, indCon[i in 1:num_verts],
-        sum(y[i,1:i-1]) + sum(y[i,i+1:num_verts]) == pathEdges(i,m)
+        sum(y[i,1:i-1]) + sum(y[i,i+1:num_verts]) == pathEdges(i,num_vehicles)
     )
 
     # out d
     @constraint(model, outdCon[j in 1:num_verts],
-        sum(y[1:j-1,j]) + sum(y[j+1:num_verts,j]) == pathEdges(j,m)
+        sum(y[1:j-1,j]) + sum(y[j+1:num_verts,j]) == pathEdges(j,num_vehicles)
     )
 
     # flow out
     @constraint(model, flowOut[k in 1:num_verts],
-        sum(x[1,:,k]) == pathEdges(k,m)
+        sum(x[1,:,k]) == pathEdges(k,num_vehicles)
     )
 
     # flow cons
@@ -97,7 +98,7 @@ function solve_tsp(; verbose = true)
 
     # Cut constraint
     @constraint(model, cutCons[i in 1:2^num_verts-2],
-        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= 2
+        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= 2*ceil(size(powset[i])/(2*capacity))
     )
 
     # couple the ys and xs
