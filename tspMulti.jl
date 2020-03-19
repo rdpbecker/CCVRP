@@ -48,7 +48,8 @@ end
 
 function solve_tsp(; verbose = true)
 
-    m = 2
+    num_vehicles = 2
+    capacity = 2
 
     # Define the vertex names
     verts = ["A","B","C","D","E"]
@@ -85,17 +86,17 @@ function solve_tsp(; verbose = true)
 
     # in d
     @constraint(model, indCon[i in 1:num_verts],
-        sum(y[i,1:i-1]) + sum(y[i,i+1:num_verts]) == pathEdges(i,m)
+        sum(y[i,1:i-1]) + sum(y[i,i+1:num_verts]) == pathEdges(i,num_vehicles)
     )
 
     # out d
     @constraint(model, outdCon[j in 1:num_verts],
-        sum(y[1:j-1,j]) + sum(y[j+1:num_verts,j]) == pathEdges(j,m)
+        sum(y[1:j-1,j]) + sum(y[j+1:num_verts,j]) == pathEdges(j,num_vehicles)
     )
 
     # flow out
     @constraint(model, flowOut[k in 1:num_verts],
-        sum(x[1,:,k]) == pathEdges(k,m)
+        sum(x[1,:,k]) == pathEdges(k,num_vehicles)
     )
 
     # flow cons
