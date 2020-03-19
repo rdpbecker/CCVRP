@@ -97,8 +97,8 @@ function solve_tsp(; verbose = true)
     )
 
     # Cut constraint
-    @constraint(model, cutCons[i in 1:2^num_verts-2],
-        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= 2*ceil(size(powset[i])/(2*capacity))
+    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
+        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= 2
     )
 
     # couple the ys and xs
