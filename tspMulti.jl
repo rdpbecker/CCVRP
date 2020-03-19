@@ -43,16 +43,7 @@ function allSubs(inputList,outputList=[],setList=[],index=1)
 end
 
 function maxDemand(S,demands)
-    println(S)
-    for i in 1:length(demands)
-        println(demands[i])
-        println([demands[i][j] for j in S])
-        println(sum([demands[i][j] for j in S]))
-    end
-    theList = [sum([demands[i][j] for j in S]) for i in 1:length(demands)]
-    theMax = maximum(theList)
-    println(theList)
-    return theMax
+    return maximum([sum([demands[i][j] for j in S]) for i in 1:length(demands)])
 end
 
 function minCutVal(S,demands,capacity)
