@@ -42,6 +42,10 @@ function allSubs(inputList,outputList=[],setList=[],index=1)
     allSubs(inputList,new,setList,index+1)
 end
 
+function maxDemand(S,demands)
+    return 4
+end
+
 function solve_tsp(; verbose = true)
     
     graph_num = "1"
@@ -58,14 +62,21 @@ function solve_tsp(; verbose = true)
         JSON.parse(txt)
     end
 
+    demands = open("demands.json") do f
+        txt = read(f,String)
+        JSON.parse(txt)
+    end
+
     num_verts = length(verts)
 
     powset = []
     allSubs(2:num_verts,[],powset,1)
     powset = [powset[i] for i in 2:2^(num_verts-1)-1]
     cuts = []
+    demandsByCut = []
     for elem in powset
         push!(cuts,cut(elem,1:num_verts))
+        push!(demandsByCut,maxDemand(elem,demands))
     end
 
     model = Model(with_optimizer(Gurobi.Optimizer))
