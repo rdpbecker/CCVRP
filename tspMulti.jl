@@ -59,8 +59,8 @@ function solve_tsp(; verbose = true)
     num_verts = length(verts)
 
     powset = []
-    allSubs(1:num_verts,[],powset,1)
-    powset = [powset[i] for i in 2:2^num_verts-1]
+    allSubs(2:num_verts,[],powset,1)
+    powset = [powset[i] for i in 2:2^(num_verts-1)-1]
     cuts = []
     for elem in powset
         push!(cuts,cut(elem,1:num_verts))
@@ -95,7 +95,7 @@ function solve_tsp(; verbose = true)
     )
 
     # Cut constraint
-    @constraint(model, cutCons[i in 1:2^num_verts-2],
+    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
         sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= 2
     )
 
