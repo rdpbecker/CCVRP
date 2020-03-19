@@ -1,4 +1,4 @@
-using JuMP, Gurobi 
+using JuMP, Gurobi, JSON 
 
 function numOnPath(i,k)
     if k == 1
@@ -60,6 +60,11 @@ function solve_tsp(; verbose = true)
         1000 9 1 1000000 9;
         1 9 9 9 1000000]
 
+    demands = open("demands.json") do f
+        txt = read(f,String)
+        JSON.parse(txt)
+    end
+
     num_verts = length(verts)
 
     powset = []
@@ -100,7 +105,7 @@ function solve_tsp(; verbose = true)
 
     # Cut constraint
     @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= maxDemand(cuts[i],[],capacity)
+        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= maxDemand(cuts[i],demands,capacity)
     )
 
     # couple the ys and xs
