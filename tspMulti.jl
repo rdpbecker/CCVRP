@@ -43,7 +43,16 @@ function allSubs(inputList,outputList=[],setList=[],index=1)
 end
 
 function maxDemand(S,demands)
-    return 1
+    println(S)
+    for i in 1:length(demands)
+        println(demands[i])
+        println([demands[i][j] for j in S])
+        println(sum([demands[i][j] for j in S]))
+    end
+    theList = [sum([demands[i][j] for j in S]) for i in 1:length(demands)]
+    theMax = maximum(theList)
+    println(theList)
+    return theMax
 end
 
 function minCutVal(S,demands,capacity)
@@ -110,7 +119,7 @@ function solve_tsp(; verbose = true)
 
     # Cut constraint
     @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(cuts[i],demands,capacity)
+        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
     )
 
     # couple the ys and xs
