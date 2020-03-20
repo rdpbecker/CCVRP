@@ -64,6 +64,7 @@ function solve_tsp(; verbose = true)
     verts = ["A","B","C","D","E"]
 
     # Distance between the pairs of vertices
+
     distance = open(string("Graphs/graph",graph_num,".json")) do f
         txt = read(f,String)
         JSON.parse(txt)
@@ -82,8 +83,10 @@ function solve_tsp(; verbose = true)
     allSubs(2:num_verts,[],powset,1)
     powset = [powset[i] for i in 2:2^(num_verts-1)-1]
     cuts = []
+    demandsByCut = []
     for elem in powset
         push!(cuts,cut(elem,1:num_verts))
+        push!(demandsByCut,maxDemand(elem,demands))
     end
 
     model = Model(with_optimizer(Gurobi.Optimizer))
