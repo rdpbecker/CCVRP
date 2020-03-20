@@ -1,5 +1,9 @@
 using JuMP, Gurobi, JSON 
 
+function convertToArray(arr)
+    return [arr[i][j] for i in 1:length(arr[1]), j in 1:length(arr)]
+end
+
 function numOnPath(i,k)
     if k == 1
         return 0
@@ -43,11 +47,15 @@ function allSubs(inputList,outputList=[],setList=[],index=1)
 end
 
 function maxDemand(S,demands)
-    return 4
+    return maximum([sum([demands[i][j] for j in S]) for i in 1:length(demands)])
+end
+
+function minCutVal(S,demands,capacity)
+    return 2*ceil(maxDemand(S,demands)/(2*capacity))
 end
 
 function solve_tsp(; verbose = true)
-    
+
     graph_num = "1"
     num_vehicles = 2
     capacity = 2
@@ -61,6 +69,8 @@ function solve_tsp(; verbose = true)
         txt = read(f,String)
         JSON.parse(txt)
     end
+
+    distance = convertToArray(distance)
 
     demands = open("demands.json") do f
         txt = read(f,String)
@@ -109,7 +119,7 @@ function solve_tsp(; verbose = true)
 
     # Cut constraint
     @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= 2
+        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
     )
 
     # couple the ys and xs
