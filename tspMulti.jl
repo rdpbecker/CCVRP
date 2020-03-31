@@ -89,7 +89,7 @@ function solve_tsp(; verbose = true)
         push!(demandsByCut,maxDemand(elem,demands))
     end
 
-    model = Model(with_optimizer(Gurobi.Optimizer))
+    model = JuMP.direct_model(Gurobi.Optimizer())
 
     # Add the y variables
     @variable(model, y[1:num_verts,1:num_verts], Bin)
@@ -121,6 +121,10 @@ function solve_tsp(; verbose = true)
     @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
         sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
     )
+
+    for i in 1:2^(num_verts-1)-2
+        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
+    end
 
     # couple the ys and xs
     @constraint(model, 
