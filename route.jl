@@ -150,19 +150,9 @@ function solve_tsp(; verbose = true)
     )
 
     @constraint(model, 
-        precjk[j in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
-        w[s,j] - w[s,k] <= 1-sum(x[2:num_verts,j,k])
-    )
-
-    @constraint(model, 
         precki[i in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
         w[s,k] - w[s,i] <= sum(x[i,2:num_verts,k])
     )
-
-#    @constraint(model, 
-#        preckj[j in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
-#        w[s,k] - w[s,j] <= sum(x[2:num_verts,j,k])
-#    )
 
     # Set the number of customers not served
     @constraint(model, notserv[s in 1:num_scens],
