@@ -54,9 +54,17 @@ function minCutVal(S,demands,capacity)
     return 2*ceil(maxDemand(S,demands)/(2*capacity))
 end
 
+function sumSingle(x,v,n)
+    sum = 0
+    for i in 1:n
+        sum = sum + x[1,i,i,v]
+    end
+    return sum
+end
+
 function solve_tsp(; verbose = true)
 
-    graph_num = "1"
+    graph_num = "4"
     num_vehicles = 2
     capacity = 2
 
@@ -92,48 +100,63 @@ function solve_tsp(; verbose = true)
     model = JuMP.direct_model(Gurobi.Optimizer())
 
     # Add the y variables
-    @variable(model, y[1:num_verts,1:num_verts], Bin)
+    @variable(model, y[1:num_verts,1:num_verts,1:num_vehicles], Bin)
 
     # Add the x variables
-    @variable(model, x[1:num_verts,1:num_verts,1:num_verts], Bin)
+    @variable(model, x[1:num_verts,1:num_verts,1:num_verts,1:num_vehicles], Bin)
 
     # in d
     @constraint(model, indCon[i in 1:num_verts],
-        sum(y[i,1:i-1]) + sum(y[i,i+1:num_verts]) == pathEdges(i,num_vehicles)
+        sum(y[i,1:i-1,:]) + sum(y[i,i+1:num_verts,:]) == pathEdges(i,num_vehicles)
     )
 
     # out d
     @constraint(model, outdCon[j in 1:num_verts],
-        sum(y[1:j-1,j]) + sum(y[j+1:num_verts,j]) == pathEdges(j,num_vehicles)
+        sum(y[1:j-1,j,:]) + sum(y[j+1:num_verts,j,:]) == pathEdges(j,num_vehicles)
     )
 
-    # flow out
-    @constraint(model, flowOut[k in 1:num_verts],
-        sum(x[1,:,k]) == pathEdges(k,num_vehicles)
+    # continuity
+    @constraint(model, cont[i in 1:num_verts,v in 1:num_vehicles],
+        sum(y[i,:,v])-sum(y[:,i,v]) == 0
+    )
+
+    # flow out max
+    @constraint(model, flowOutMax[k in 1:num_verts,v in 1:num_vehicles],
+        sum(x[1,:,k,v]) <= 1
+    )
+
+    # flow out total
+    @constraint(model, flowOutTotal[k in 1:num_verts],
+        sum(x[1,:,k,:]) == pathEdges(k,num_vehicles)
     )
 
     # flow cons
-    @constraint(model, flowCons[i in 1:num_verts, k in 1:num_verts],
-        sum(x[i,:,k])-sum(x[:,i,k]) == numOnPath(i,k)
+    @constraint(model, flowCons[i in 1:num_verts, k in 1:num_verts, v in 1:num_vehicles],
+        sum(x[i,:,k,v])-sum(x[:,i,k,v]) == numOnPath(i,k)*sum(x[1,:,k,v])
+    )
+
+    # depot out
+    @constraint(model, depotOut[v in 1:num_vehicles],
+        sumSingle(x,v,num_verts) == 1
     )
 
     # Cut constraint
-    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
-    )
+#    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
+#        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
+#    )
 
-    for i in 1:2^(num_verts-1)-2
-        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
-    end
+#    for i in 1:2^(num_verts-1)-2
+#        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
+#    end
 
     # couple the ys and xs
     @constraint(model, 
-        couple[i in 1:num_verts, j in 1:num_verts, k in 1:num_verts], 
-        x[i,j,k]-y[i,j] <= 0
+        couple[i in 1:num_verts, j in 1:num_verts, k in 1:num_verts, v in 1:num_vehicles], 
+        x[i,j,k,v]-y[i,j,v] <= 0
     )
 
-    @objective(model, Min, sum(distance[i,j]*y[i,j] 
-        for i in 1:num_verts, j in 1:num_verts)
+    @objective(model, Min, sum(distance[i,j]*y[i,j,v] 
+        for i in 1:num_verts, j in 1:num_verts, v in 1:num_vehicles)
     )
 
     JuMP.optimize!(model)
@@ -142,11 +165,13 @@ function solve_tsp(; verbose = true)
         println("RESULTS:")
         for i in 1:num_verts
             for j in 1:num_verts
-                println("Vertex $(i) to vertex $(j) = $(JuMP.value(y[i,j]))")
-                for k in 1:num_verts
-                    println("On path to $(k): $(JuMP.value(x[i,j,k]))")
+                for v in 1:num_vehicles
+                    println("Vertex $(i) to vertex $(j), vehicle $(v): $(JuMP.value(y[i,j,v]))")
+                    for k in 1:num_verts
+                            println("On path to $(k), vehicle $(v): $(JuMP.value(x[i,j,k,v]))")
+                    end
+                    println("")
                 end
-                println("")
             end
         end
     end
