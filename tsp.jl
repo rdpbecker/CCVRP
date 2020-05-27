@@ -37,12 +37,12 @@ function solve_tsp(; verbose = true)
 
     # in d
     @constraint(model, indCon[i in 1:num_verts],
-        sum(y[i,1:i-1]) + sum(y[i,i+1:num_verts]) == 1
+        sum(y[i,1:num_verts]) == 1
     )
 
     # out d
     @constraint(model, outdCon[j in 1:num_verts],
-        sum(y[1:j-1,j]) + sum(y[j+1:num_verts,j]) == 1
+        sum(y[1:num_verts,j]) == 1
     )
 
     # flow out
