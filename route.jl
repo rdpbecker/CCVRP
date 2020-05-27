@@ -1,4 +1,8 @@
-using JuMP, Gurobi
+using JuMP, Gurobi, JSON
+
+function convertToArray(arr)
+    return [arr[i][j] for i in 1:length(arr), j in 1:length(arr[1])]
+end
 
 function numOnPath(i,k)
     if k == 1
@@ -25,37 +29,28 @@ end
 
 function solve_tsp(; verbose = true)
 
+    graph_num = "1"
+    capacity = 3
+
     # Define the vertex names
     verts = ["A","B","C","D","E"]
 
     # Distance between the pairs of vertices
-    distance = [1000000 3 4 5 1;
-        3 1000000 5 1 2;
-        4 5 1000000 2 3;
-        5 1 2 1000000 4;
-        1 2 3 4 1000000]
 
-    # Capacity
-    cap = 2
+    distance = open(string("Graphs/graph",graph_num,".json")) do f
+        txt = read(f,String)
+        JSON.parse(txt)
+    end
 
-    # All possible demand scenarios
-    demands = [0 0 0 2 2;
-    0 0 1 1 2;
-    0 0 1 2 1;
-    0 1 0 1 2;
-    0 1 0 2 1;
-    0 1 1 0 2;
-    0 1 1 1 1;
-    0 1 1 2 0;
-    0 1 2 0 1;
-    0 1 2 1 0;
-    0 2 0 0 2;
-    0 2 0 1 1;
-    0 2 0 2 0;
-    0 2 1 0 1;
-    0 2 1 1 0;
-    0 2 2 0 0]
-    
+    distance = convertToArray(distance)
+
+    demands = open("demands5.json") do f
+        txt = read(f,String)
+        JSON.parse(txt)
+    end
+
+    demands = convertToArray(demands)
+
     num_verts = length(verts)
     num_scens = size(demands,1)
 
@@ -106,19 +101,8 @@ function solve_tsp(; verbose = true)
     # The number of customers not served in this scenario
     @variable(model, nns[1:num_scens] >= 0)
 
-    # Positive correction for determining if we need to refill at
-    # this vertex in this scenario
-    @variable(model, pplus[1:num_scens,1:num_verts] >= 0)
-
-    # Negative correction for determining if we need to refill at
-    # this vertex in this scenario
-    @variable(model, pminus[1:num_scens,1:num_verts] >= 0)
-
-    # One if there is positive correction, zero else
-    @variable(model, sign[1:num_scens,1:num_verts], Bin)
-
     # One if we need to refill here, zero else
-    @variable(model, pay[1:num_scens,1:num_verts], Bin)
+    @variable(model, pays[1:num_scens,1:num_verts], Bin)
 
     ## Scenario constraints
     # In these two constraints, we determine whether the customer
@@ -126,13 +110,13 @@ function solve_tsp(; verbose = true)
     @constraint(model,
         serve[k in 2:num_verts, s in 1:num_scens],
         sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i-1) for i
-        in 1:num_verts) - w[s,k]*cap <= cap
+        in 1:num_verts) - w[s,k]*capacity <= capacity-1
     )
 
     @constraint(model,
         servecomp[k in 2:num_verts, s in 1:num_scens],
         sum(sumNotEq(demands[s,2:num_verts],x[i,2:num_verts,k],i-1) for i
-        in 1:num_verts) - w[s,k]*cap >= 0 
+        in 1:num_verts) - w[s,k]*capacity >= 0 
     )
 
     # Determine the index of the given vertex in the TSP route
@@ -142,18 +126,6 @@ function solve_tsp(; verbose = true)
         in 1:num_verts) - o[k] == 0 
     )
 
-    # Make sure that the index reached first is served first (next
-    # four)
-    @constraint(model, 
-        precik[i in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
-        w[s,i] - w[s,k] <= 1-sum(x[i,2:num_verts,k])
-    )
-
-    @constraint(model, 
-        precki[i in 2:num_verts, k in 2:num_verts, s in 1:num_scens],
-        w[s,k] - w[s,i] <= sum(x[i,2:num_verts,k])
-    )
-
     # Set the number of customers not served
     @constraint(model, notserv[s in 1:num_scens],
         sum(w[s,k] for k in 2:num_verts) - nns[s] == 0
@@ -161,27 +133,12 @@ function solve_tsp(; verbose = true)
 
     # Set the positive and negative correction
     @constraint(model, lastserv[k in 2:num_verts, s in 1:num_scens],
-        o[k] + nns[s] + pplus[s,k] - pminus[s,k] == num_verts
-    )
-
-    # Set the sign variable for this vertex and scenario
-    @constraint(model, possign[k in 2:num_verts, s in 1:num_scens],
-        pplus[s,k] - num_verts*sign[s,k] <= 0
-    )
-
-    @constraint(model, negsign[k in 2:num_verts, s in 1:num_scens],
-        pminus[s,k] + num_verts*sign[s,k] <= num_verts
-    )
-
-    # Determine if we need to refill at this vertex in this
-    # scenario
-    @constraint(model, setpay[k in 2:num_verts, s in 1:num_scens],
-        pay[s,k] + pplus[s,k] + pminus[s,k] >= 1
+        o[k] + nns[s] + pays[s,k] >= num_verts*w[s,k]+1
     )
 
     @objective(model, Min, 
         sum(distance[i,j]*y[i,j] for i in 1:num_verts, j in 1:num_verts) +
-        (1/num_scens)*sum(2*pay[s,k]*distance[k,1] for s in 1:num_scens, k in 1:num_verts)
+        (1/num_scens)*sum(2*pays[s,k]*distance[k,1] for s in 1:num_scens, k in 1:num_verts)
     )
 
     JuMP.optimize!(model)
@@ -210,9 +167,7 @@ function solve_tsp(; verbose = true)
             for i in 2:num_verts
                 println("Vertex $(i)")
                 println("Served in second pass: $(JuMP.value(w[s,i]))")
-                println("Adjustors (+/-): $(JuMP.value(pplus[s,i])), $(JuMP.value(pminus[s,i]))")
-                println("Sign: $(JuMP.value(sign[s,i]))")
-                println("Goes back to depot: $(JuMP.value(pay[s,i]))")
+                println("Goes back to depot: $(JuMP.value(pays[s,i]))")
                 println("")
             end
             println("")
