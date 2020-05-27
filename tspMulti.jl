@@ -1,7 +1,7 @@
 using JuMP, Gurobi, JSON 
 
 function convertToArray(arr)
-    return [arr[i][j] for i in 1:length(arr[1]), j in 1:length(arr)]
+    return [arr[i][j] for i in 1:length(arr), j in 1:length(arr[1])]
 end
 
 function numOnPath(i,k)
