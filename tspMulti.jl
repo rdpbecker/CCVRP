@@ -64,7 +64,7 @@ end
 
 function solve_tsp(; verbose = true)
 
-    graph_num = "4"
+    graph_num = "3"
     num_vehicles = 2
     capacity = 2
 
@@ -80,7 +80,7 @@ function solve_tsp(; verbose = true)
 
     distance = convertToArray(distance)
 
-    demands = open("demands.json") do f
+    demands = open("demands5.json") do f
         txt = read(f,String)
         JSON.parse(txt)
     end
@@ -107,22 +107,17 @@ function solve_tsp(; verbose = true)
 
     # in d
     @constraint(model, indCon[i in 1:num_verts],
-        sum(y[i,1:i-1,:]) + sum(y[i,i+1:num_verts,:]) == pathEdges(i,num_vehicles)
+        sum(y[i,1:num_verts,:]) == pathEdges(i,num_vehicles)
     )
 
     # out d
     @constraint(model, outdCon[j in 1:num_verts],
-        sum(y[1:j-1,j,:]) + sum(y[j+1:num_verts,j,:]) == pathEdges(j,num_vehicles)
+        sum(y[1:num_verts,j,:]) == pathEdges(j,num_vehicles)
     )
 
     # continuity
     @constraint(model, cont[i in 1:num_verts,v in 1:num_vehicles],
         sum(y[i,:,v])-sum(y[:,i,v]) == 0
-    )
-
-    # flow out max
-    @constraint(model, flowOutMax[k in 1:num_verts,v in 1:num_vehicles],
-        sum(x[1,:,k,v]) <= 1
     )
 
     # flow out total
