@@ -51,7 +51,7 @@ function maxDemand(S,demands)
 end
 
 function minCutVal(S,demands,capacity)
-    return 2*ceil(maxDemand(S,demands)/(2*capacity))
+    return 2*ceil(maxDemand(S,demands)/(2*capacity-1))
 end
 
 function sumSingle(x,v,n)
@@ -64,9 +64,9 @@ end
 
 function solve_tsp(; verbose = true)
 
-    graph_num = "3"
+    graph_num = "1"
     num_vehicles = 2
-    capacity = 2
+    capacity = 3
 
     # Define the vertex names
     verts = ["A","B","C","D","E"]
@@ -136,13 +136,13 @@ function solve_tsp(; verbose = true)
     )
 
     # Cut constraint
-#    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-#        sum([y[edge[1],edge[2]]+y[edge[2],edge[1]] for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
-#    )
+    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
+        sum([sum(y[edge[1],edge[2],:]+y[edge[2],edge[1],:]) for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
+    )
 
-#    for i in 1:2^(num_verts-1)-2
-#        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
-#    end
+    for i in 1:2^(num_verts-1)-2
+        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
+    end
 
     # couple the ys and xs
     @constraint(model, 
