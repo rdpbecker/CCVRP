@@ -98,8 +98,6 @@ function solve_tsp(; verbose = true)
         push!(demandsByCut,maxDemand(elem,demands))
     end
 
-    demands = convertToArray(demands)
-
     model = JuMP.direct_model(Gurobi.Optimizer())
 
     # Add the y variables
@@ -139,19 +137,21 @@ function solve_tsp(; verbose = true)
     )
 
     # Cut constraint
-#    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-#        sum([sum(y[edge[1],edge[2],:]+y[edge[2],edge[1],:]) for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
-#    )
+    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
+        sum([sum(y[edge[1],edge[2],:]+y[edge[2],edge[1],:]) for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
+    )
 
-#    for i in 1:2^(num_verts-1)-2
-#        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
-#    end
+    for i in 1:2^(num_verts-1)-2
+        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
+    end
 
     # couple the ys and xs
     @constraint(model, 
         couple[i in 1:num_verts, j in 1:num_verts, k in 1:num_verts, v in 1:num_vehicles], 
         x[i,j,k,v]-y[i,j,v] <= 0
     )
+
+    demands = convertToArray(demands)
 
     ## Scenario variables
     # Index of the vertex on the TSP route
@@ -186,7 +186,7 @@ function solve_tsp(; verbose = true)
     @constraint(model,
         serve[k in 2:num_verts, s in 1:num_scens, v in 1:num_vehicles],
         sum(demands[s,j]*x[i,j,k,v] for i in 1:num_verts, j in 2:num_verts) 
-        - w[s,k,v]*capacity <= capacity
+        - w[s,k,v]*capacity <= capacity-1
     )
 
     @constraint(model,
@@ -263,7 +263,7 @@ function solve_tsp(; verbose = true)
         for s in 1:num_scens
             println("Scenario $(demands[s,:])")
             for v in 1:num_vehicles
-                println("Not served: $(JuMP.value(nns[s]))")
+                println("Not served: $(JuMP.value(nns[s,v]))")
                 for i in 2:num_verts
                     println("Vertex $(i)")
                     println("Served in second pass: $(JuMP.value(w[s,i,v]))")
