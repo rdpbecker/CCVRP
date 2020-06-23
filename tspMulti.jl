@@ -1,7 +1,6 @@
 using JuMP, Gurobi, JSON 
 
 graph_num = "1"
-demands_num = "5"
 num_vehicles = 2
 capacity = 3
 
@@ -29,36 +28,6 @@ function pathEdges(i,m)
     return 1
 end
 
-function cut(S,V)
-    V_S = setdiff(V,S)
-    cutList = []
-    for elem in S
-        for elem2 in V_S
-            push!(cutList,[elem,elem2])
-        end
-    end
-    return cutList
-end
-
-function allSubs(inputList,outputList=[],setList=[],index=1)
-    if index == size(inputList)[1]+1
-        push!(setList,outputList)
-        return
-    end
-    allSubs(inputList,deepcopy(outputList),setList,index+1)
-    new = deepcopy(outputList)
-    push!(new,inputList[index])
-    allSubs(inputList,new,setList,index+1)
-end
-
-function maxDemand(S,demands)
-    return maximum([sum([demands[i][j] for j in S]) for i in 1:length(demands)])
-end
-
-function minCutVal(S,demands,capacity)
-    return 2*ceil(maxDemand(S,demands)/(2*capacity-1))
-end
-
 function sumSingle(x,v,n)
     sum = 0
     for i in 1:n
@@ -77,25 +46,9 @@ function solve_tsp(; verbose = true)
 
     distance = convertToArray(distance)
 
-    # Load the demand scenarios
-    demands = open(string("Demands/demands",demands_num,".json")) do f
-        txt = read(f,String)
-        JSON.parse(txt)
-    end
-
     # Create the vertex array
     num_verts = size(distance,1)
     verts = 1:num_verts
-
-    powset = []
-    allSubs(2:num_verts,[],powset,1)
-    powset = [powset[i] for i in 2:2^(num_verts-1)-1]
-    cuts = []
-    demandsByCut = []
-    for elem in powset
-        push!(cuts,cut(elem,1:num_verts))
-        push!(demandsByCut,maxDemand(elem,demands))
-    end
 
     model = JuMP.direct_model(Gurobi.Optimizer())
 
@@ -134,15 +87,6 @@ function solve_tsp(; verbose = true)
     @constraint(model, depotOut[v in 1:num_vehicles],
         sumSingle(x,v,num_verts) == 1
     )
-
-    # Cut constraint
-    @constraint(model, cutCons[i in 1:2^(num_verts-1)-2],
-        sum([sum(y[edge[1],edge[2],:]+y[edge[2],edge[1],:]) for edge in cuts[i]]) >= minCutVal(powset[i],demands,capacity)
-    )
-
-    for i in 1:2^(num_verts-1)-2
-        MOI.set(model, Gurobi.ConstraintAttribute("Lazy"), cutCons[i], 2)
-    end
 
     # couple the ys and xs
     @constraint(model, 
