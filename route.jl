@@ -1,5 +1,9 @@
 using JuMP, Gurobi, JSON
 
+graph_num = "1"
+demands_num = "5"
+capacity = 3
+
 function convertToArray(arr)
     return [arr[i][j] for i in 1:length(arr), j in 1:length(arr[1])]
 end
@@ -29,14 +33,7 @@ end
 
 function solve_tsp(; verbose = true)
 
-    graph_num = "1"
-    capacity = 3
-
-    # Define the vertex names
-    verts = ["A","B","C","D","E"]
-
-    # Distance between the pairs of vertices
-
+    # Load the adjacency matrix
     distance = open(string("Graphs/graph",graph_num,".json")) do f
         txt = read(f,String)
         JSON.parse(txt)
@@ -44,14 +41,17 @@ function solve_tsp(; verbose = true)
 
     distance = convertToArray(distance)
 
-    demands = open("demands5.json") do f
+    # Load the demand scenarios
+    demands = open(string("Demands/demands",demands_num,".json")) do f
         txt = read(f,String)
         JSON.parse(txt)
     end
 
     demands = convertToArray(demands)
 
-    num_verts = length(verts)
+    # Make the array of vertices
+    num_verts = size(distance,1)
+    verts = 1:num_verts
     num_scens = size(demands,1)
 
     model = Model(with_optimizer(Gurobi.Optimizer))

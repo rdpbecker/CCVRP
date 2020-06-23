@@ -30,7 +30,7 @@ In order to use these programs, you will need to have Gurobi
 installed and configure JuMP so it knows where the home directory
 is for the Gurobi optimizer.
 
-Currently, the adjacency matrix for the system and the list of
-possible demands is hard-coded. However, at some point the plan is
-to design a way to input a graph and get out the adjacency matrix
-and the list of possible demands from it.
+There is now a way to input a graph to the solver. This is done by
+storing the adjacency matrix for the graph in the
+`Graphs/graph##.json` and putting `graph_num=##` at the top of the
+file that uses it. The demands are stored and accessed similarly.
